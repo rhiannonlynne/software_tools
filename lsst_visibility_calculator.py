@@ -294,9 +294,9 @@ def calc_lsst_observing_time(hrs_visible_per_night,cadence,n_exp_visit):
     """
     
     # Overheads quoted in seconds
-    readout = 5.0
-    slew = 20.0
-    filter_change = 20.0
+    readout = 2.0 #5
+    slew = 12.0  #20
+    filter_change = 8.0 #20
     exp_time = 15.0
     
     # Time required for a single visit [secs]:
