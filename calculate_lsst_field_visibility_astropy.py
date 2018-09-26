@@ -48,8 +48,11 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
         target_alts = []
         hrs_visible_per_night = []
         hrs_per_night = []
+        jds = []
         
         for d in dates:
+            
+            jds.append(d.jd)
             
             t  = copy.copy(d)
             t.out_subfmt = 'date'
@@ -79,6 +82,8 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
             
             idx = list(set(idx).intersection(set(jdx)))
             
+            target_alts.append(alts[jdx].max())
+            
             if len(idx) > 0:
                 
                 ts_vis = ts[idx]
@@ -87,7 +92,7 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 
                 total_time_visible += tvis
                 
-                target_alts.append(alts[idx].max())
+                #target_alts.append(alts[idx].max())
                 
                 print('Target visible from LSST for '+str(round(tvis*24.0,2))+\
                         'hrs on '+tstr)
@@ -96,37 +101,66 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 
             else:
                 
-                target_alts.append(-1e5)
+                #target_alts.append(-1e5)
                 
                 hrs_visible_per_night.append(0.0)
                 
                 print('Target not visible from LSST on '+tstr)
-            
+        
         if diagnostics:
             
-            fig = plt.figure(1)
-
-            plt.plot(ts.jd, alts, 'k-')
-
-            plt.plot(ts.jd, sun_alts, 'y-')
+            plot_visibility(jds, target_alts, sun_alts, 
+                            hrs_visible_per_night, min_alt)
             
-            plt.plot(ts.jd, [30.0]*len(ts), 'r-.')
-            
-            plt.fill_between(ts.jd, 0, 90,
-                 sun_altaz.alt > -18*u.deg, color='y', zorder=0)
-
-            plt.gcf().autofmt_xdate()
-            
-            (xmin,xmax,ymin,ymax) = plt.axis()
-            #plt.axis([ts.jd[1500],ts.jd[2000],0.0,90.0])
-            
-            plt.xlabel('JD')
-
-            plt.ylabel('Field altitude above horizon [deg]')
-
-            plt.savefig('target_visibility.png')
-        
         return total_time_visible, hrs_visible_per_night
+
+def plot_visibility(ts, target_alts, sun_alts, 
+                    hrs_visible_per_night, min_alt):
+    """Function to plot a chart of the target and solar altitude above the 
+    horizon at the LSST site as a function of time"""
+    
+    ts = np.array(ts)
+    target_alts = np.array(target_alts)
+
+    (fig, ax1) = plt.subplots(figsize=(10,10))
+    
+    plt.rcParams.update({'font.size': 18})
+    plt.rc('xtick', labelsize=18) 
+    plt.rc('ytick', labelsize=18)
+    plt.xticks(rotation=45.0)
+    
+    idx = np.where(target_alts > -1e5)
+    ax1.plot((ts-2450000)[idx], target_alts[idx], 'b-', label='Target altitude')
+    ax1.set_xlabel('JD')
+    ax1.set_ylabel('Maximum altitude [$^{\circ}$]', color='b')
+    ax1.xaxis.label.set_fontsize(18)
+    ax1.yaxis.label.set_fontsize(18)
+    for label in ax1.get_xticklabels():
+        label.set_fontsize(18)
+    for label in ax1.get_yticklabels():
+        label.set_fontsize(18)
+
+    t = [(ts-2450000).min(),(ts-2450000).max()]
+    ax1.plot(t,[min_alt]*len(t),'r-.')
+    
+    ax1.grid(True)
+    ax1.tick_params('y', colors='b')
+    
+    ax2 = ax1.twinx()
+    ax2.plot(ts-2450000, hrs_visible_per_night, 'm--', label='Time target visible')
+    ax2.set_ylabel('Hours per night',color='m')
+        
+    ax2.yaxis.label.set_fontsize(18)
+    ax2.grid(False)
+    ax2.tick_params('y', colors='m')
+    
+    fig.tight_layout()
+    
+    plt.legend()
+    
+    plt.savefig('target_visibility_from_lsst.png')
+    
+    plt.close()
 
 if __name__ == '__main__':
     
