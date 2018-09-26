@@ -141,7 +141,7 @@ def plot_visibility(ts, target_alts, sun_alts,
         label.set_fontsize(18)
 
     t = [(ts-2450000).min(),(ts-2450000).max()]
-    ax1.plot(t,[min_alt]*len(t),'r-.')
+    ax1.plot(t,[min_alt]*len(t),'g-.')
     
     ax1.grid(True)
     ax1.tick_params('y', colors='b')
