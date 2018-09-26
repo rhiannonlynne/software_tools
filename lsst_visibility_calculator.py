@@ -44,7 +44,7 @@ def calc_hours_visibility_from_LSST(pointing, start_date, end_date,
     
     sun = setup_Sun()
     
-    jd_dates = np.arange(jd_start, jd_end, 1.0)      # Per minute
+    jd_dates = np.arange(jd_start, jd_end, 1.0)      # Per day
     
     n_days = (end_date - start_date).days
     
