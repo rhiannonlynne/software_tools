@@ -18,7 +18,7 @@ import copy
 
 def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                                     min_alt=30.0,dt_days=1.0,
-                                    diagnostics=False):
+                                    diagnostics=False,verbose=False):
         """Method to calculate the visibility of a given RA and Dec from LSST 
         over the course of a year
         
@@ -94,7 +94,8 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 
                 #target_alts.append(alts[idx].max())
                 
-                print('Target visible from LSST for '+str(round(tvis*24.0,2))+\
+                if verbose:
+                    print('Target visible from LSST for '+str(round(tvis*24.0,2))+\
                         'hrs on '+tstr)
                         
                 hrs_visible_per_night.append((tvis*24.0))
@@ -105,7 +106,8 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 
                 hrs_visible_per_night.append(0.0)
                 
-                print('Target not visible from LSST on '+tstr)
+                if verbose:
+                    print('Target not visible from LSST on '+tstr)
         
         if diagnostics:
             
