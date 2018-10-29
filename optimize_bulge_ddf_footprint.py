@@ -6,6 +6,7 @@ Created on Fri Oct 26 21:38:32 2018
 """
 import vizier_tools
 import lsst_class
+import wfirst_fov
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
@@ -23,11 +24,15 @@ def optimize_survey_footprint():
 
     lsst = lsst_class.LSSTFootprint(ra_centre=params['ra'],
                                     dec_centre=params['dec'])
+    
+    wfirst = wfirst_fov.WFIRSTFootprint()
+    
     params['fov'] = lsst.radius*2.0
     params['fov'] = 20.0
     params['lsst_pixscale'] = lsst.pixel_scale
     
     if 'catalog_file' not in params.keys():
+        print(params)
         catalog = fetch_catalog_sources_within_image(params)
     
         catalog.write(path.join(params['red_dir'],'catalog.data'), 
@@ -36,10 +41,10 @@ def optimize_survey_footprint():
     else:
 
         catalog = Table.read(params['catalog_file'], format='ascii.basic')
-        
+    
     print(catalog)
     
-    plot_catalog(params,catalog,lsst)
+    plot_catalog(params,catalog,lsst,wfirst)
     
 def get_args():
     
@@ -69,11 +74,11 @@ def fetch_catalog_sources_within_image(params):
     catalog = vizier_tools.search_vizier_for_sources(params['ra'], 
                                                        params['dec'], 
                                                         params['radius'], 
-                                                        'PS1')
+                                                        'VPHAS+')
     
     return catalog    
 
-def plot_catalog(params,catalog,lsst):
+def plot_catalog(params,catalog,lsst,wfirst):
     """Function to plot the field of view"""
     
     c = SkyCoord(params['ra']+' '+params['dec'], unit=(u.hourangle, u.deg))
@@ -85,20 +90,39 @@ def plot_catalog(params,catalog,lsst):
     w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     
     footprint = Circle((c.ra.degree/15.0, c.dec.degree), lsst.radius/2, 
-                       edgecolor='yellow', facecolor='none', linewidth=10.0)
+                       edgecolor='yellow', facecolor='none', linewidth=5.0)
 
-    #plt.subplot(projection=w)
-    (fig, ax) = plt.subplots()
+    #plt.subplot(projection=w)    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal')
+    
     plt.subplots_adjust(left=None, bottom=0.2, 
                         right=None, top=None, 
                         wspace=None, hspace=None)
-    plt.scatter(catalog['RAJ2000']/15.0, catalog['DEJ2000'], 
+    try:
+        plt.scatter(catalog['RAJ2000']/15.0, catalog['DEJ2000'], 
                 s=(params['lsst_pixscale']/36000.0),
                 edgecolor='black', facecolor=(0, 0, 0, 1.0))
+    except KeyError:
+        plt.scatter(catalog['_RAJ2000']/15.0, catalog['_DEJ2000'], 
+                s=(params['lsst_pixscale']/36000.0),
+                edgecolor='black', facecolor=(0, 0, 0, 1.0))
+                
     ax.add_patch(footprint)
-    plt.grid(color='white', ls='solid')
+    
+    wfirst.draw_footprint(ax, x=c.ra.degree/15.0, y=c.dec.degree)
+    
+    #plt.grid(color='white', ls='solid')
+    plot_width = 2.0
+    xmin = (c.ra.degree - 15.0*plot_width/2.0)/15.0
+    xmax = (c.ra.degree + 15.0*plot_width/2.0)/15.0
+    ymin = c.dec.degree - plot_width/2.0
+    ymax = c.dec.degree + plot_width/2.0
+    plt.axis([xmin,xmax,ymin,ymax])
+    
     plt.ylabel('Dec')
     plt.xlabel('RA')
+
     plt.xticks(rotation=45.0)
     plt.yticks(rotation=45.0)
     
