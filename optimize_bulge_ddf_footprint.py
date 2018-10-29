@@ -22,30 +22,38 @@ def optimize_survey_footprint():
     
     params = get_args()
 
+    survey_centre = SkyCoord(params['ra']+' '+params['dec'], unit=(u.hourangle, u.deg))
+
     lsst = lsst_class.LSSTFootprint(ra_centre=params['ra'],
                                     dec_centre=params['dec'])
     
-    wfirst = wfirst_fov.WFIRSTFootprint()
+    wfirst_survey = wfirst_fov.bulge_survey_footprint(survey_centre.ra.degree,
+                                                      survey_centre.dec.degree)
     
-    params['fov'] = lsst.radius*2.0
-    params['fov'] = 20.0
+    params['search_radius'] = 0.5  # deg
+    
     params['lsst_pixscale'] = lsst.pixel_scale
     
-    if 'catalog_file' not in params.keys():
-        print(params)
+    if 'catalog_file' not in params.keys() and '-no-catalog' not in params.keys():
+
         catalog = fetch_catalog_sources_within_image(params)
     
         catalog.write(path.join(params['red_dir'],'catalog.data'), 
                                 format='ascii.basic', overwrite=True)
         
-    else:
+    elif 'catalog_file' in params.keys() and 'no-catalog' not in params.keys():
 
         catalog = Table.read(params['catalog_file'], format='ascii.basic')
     
-    print(catalog)
+    if '-no-catalog' not in params.keys():
+        print(catalog)
     
-    plot_catalog(params,catalog,lsst,wfirst)
+        plot_catalog(params,catalog,lsst,wfirst_survey)
     
+    else:
+        
+        plot_fov(params,lsst,wfirst_survey)
+        
 def get_args():
     
     params = { }
@@ -54,12 +62,14 @@ def get_args():
         params['red_dir'] = argv[1]
         params['ra'] = argv[2]
         params['dec'] = argv[3]
-        if len(argv) == 5:
+        if len(argv) == 5 and '-catalog=' in argv[4]:
             params['catalog_file'] = str(argv[4]).replace('-catalog=','')
+        elif len(argv) == 5 and '-no-catalog' in argv[4]:
+            params['-no-catalog'] = True
             
     else:
         print('Parameters:')
-        print('> python optimize_bulge_ddf_footprint.py red_dir  ra dec[sexigesimal] -catalog=file_path')
+        print('> python optimize_bulge_ddf_footprint.py red_dir  ra dec[sexigesimal] [-catalog=file_path or -no-catalog]')
         exit()
     
     return params
@@ -69,7 +79,7 @@ def fetch_catalog_sources_within_image(params):
     field of view of the reference image, based on the metadata information."""
     
     # Radius should be in arcmin
-    params['radius'] = (np.sqrt(params['fov'])/2.0)*60.0
+    params['radius'] = params['search_radius']*60.0
     
     catalog = vizier_tools.search_vizier_for_sources(params['ra'], 
                                                        params['dec'], 
@@ -89,9 +99,6 @@ def plot_catalog(params,catalog,lsst,wfirst):
     w.wcs.crval = [c.ra.degree, c.dec.degree]
     w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     
-    footprint = Circle((c.ra.degree/15.0, c.dec.degree), lsst.radius/2, 
-                       edgecolor='yellow', facecolor='none', linewidth=5.0)
-
     #plt.subplot(projection=w)    
     fig = plt.figure()
     ax = fig.add_subplot(111, aspect='equal')
@@ -100,22 +107,71 @@ def plot_catalog(params,catalog,lsst,wfirst):
                         right=None, top=None, 
                         wspace=None, hspace=None)
     try:
-        plt.scatter(catalog['RAJ2000']/15.0, catalog['DEJ2000'], 
+        plt.scatter(catalog['RAJ2000'], catalog['DEJ2000'], 
                 s=(params['lsst_pixscale']/36000.0),
-                edgecolor='black', facecolor=(0, 0, 0, 1.0))
+                edgecolor='black', facecolor=(0, 0, 0, 0.2))
     except KeyError:
-        plt.scatter(catalog['_RAJ2000']/15.0, catalog['_DEJ2000'], 
+        plt.scatter(catalog['_RAJ2000'], catalog['_DEJ2000'], 
                 s=(params['lsst_pixscale']/36000.0),
-                edgecolor='black', facecolor=(0, 0, 0, 1.0))
-                
-    ax.add_patch(footprint)
+                edgecolor='black', facecolor=(0, 0, 0, 0.2))
+                    
+    for pointing in wfirst:
+        
+        pointing.draw_footprint(ax)
     
-    wfirst.draw_footprint(ax, x=c.ra.degree/15.0, y=c.dec.degree)
+    lsst.draw_footprint(ax)
+    
+    plt.plot([c.ra.degree],[c.dec.degree],'r+')
     
     #plt.grid(color='white', ls='solid')
-    plot_width = 2.0
-    xmin = (c.ra.degree - 15.0*plot_width/2.0)/15.0
-    xmax = (c.ra.degree + 15.0*plot_width/2.0)/15.0
+    plot_width = 4.0
+    xmin = (c.ra.degree - plot_width/2.0)
+    xmax = (c.ra.degree + plot_width/2.0)
+    ymin = c.dec.degree - plot_width/2.0
+    ymax = c.dec.degree + plot_width/2.0
+    plt.axis([xmin,xmax,ymin,ymax])
+    
+    plt.ylabel('Dec [deg]')
+    plt.xlabel('RA [deg]')
+
+    plt.xticks(rotation=45.0)
+    plt.yticks(rotation=45.0)
+    
+    plt.savefig(path.join(params['red_dir'],'sky_view.png'), bbox_inches='tight')
+
+def plot_fov(params,lsst,wfirst_survey):
+    
+    #background = plt.imread('/Users/rstreet/LSST/survey_strategy_wp/PS1_ob180022_4deg2.png')
+        
+    c = SkyCoord(params['ra']+' '+params['dec'], unit=(u.hourangle, u.deg))
+    
+    #w = WCS(naxis=2)
+    #w.wcs.crpix = [background.shape[1]/2, background.shape[0]/2]
+    #w.wcs.cdelt = np.array([4/3600.0, 4/3600.0])
+    #w.wcs.crval = [c.ra.degree, c.dec.degree]
+    #w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        
+    fig = plt.figure(1,(10,10))
+    
+    ax = fig.add_subplot(111, aspect='equal')
+    
+    plt.subplots_adjust(left=None, bottom=0.2, 
+                        right=None, top=None, 
+                        wspace=None, hspace=None)
+    
+    #plt.imshow(background)
+    
+    for pointing in wfirst_survey:
+        
+        pointing.draw_footprint(ax)
+
+    lsst.draw_footprint(ax)
+    
+    plt.plot([c.ra.degree],[c.dec.degree],'r+')
+    
+    plot_width = 4.0
+    xmin = (c.ra.degree - plot_width/2.0)
+    xmax = (c.ra.degree + plot_width/2.0)
     ymin = c.dec.degree - plot_width/2.0
     ymax = c.dec.degree + plot_width/2.0
     plt.axis([xmin,xmax,ymin,ymax])
@@ -125,8 +181,10 @@ def plot_catalog(params,catalog,lsst,wfirst):
 
     plt.xticks(rotation=45.0)
     plt.yticks(rotation=45.0)
+
+    plt.savefig(path.join(params['red_dir'],'survey_fov.png'), bbox_inches='tight')
     
-    plt.savefig(path.join(params['red_dir'],'sky_view.png'))
+    plt.close(1)
     
 if __name__ == '__main__':
     

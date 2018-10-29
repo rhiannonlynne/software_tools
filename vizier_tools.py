@@ -21,6 +21,9 @@ def search_vizier_for_sources(ra, dec, radius, catalog, row_limit=-1):
                                     ['2MASS', 'VPHAS+']
     """
     
+    print('Seaching '+catalog+' catalog in Vizier at pointing '+ra+', '+dec+\
+                ' with radius '+str(radius)+' arcmin' )
+                
     supported_catalogs = { '2MASS': ['2MASS', 
                                      ['_RAJ2000', '_DEJ2000', 'Jmag', 'e_Jmag', \
                                     'Hmag', 'e_Hmag','Kmag', 'e_Kmag'],

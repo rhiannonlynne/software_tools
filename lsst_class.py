@@ -7,6 +7,7 @@ Created on Fri Oct 26 21:53:46 2018
 
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+from matplotlib.patches import Circle
 
 class LSSTFootprint:
     """Class describing the parameters of a single LSST field of view"""
@@ -17,7 +18,20 @@ class LSSTFootprint:
         self.radius = 3.5/2.0  # deg radius field of view
         self.coord = SkyCoord(ra_centre+' '+dec_centre, unit=(u.hourangle, u.deg))
         self.pixel_scale = 0.2 # arcsec
-    
+        
+    def draw_footprint(self,ax):
+        """Method to draw a WFIRST-WFI footprint on a pre-existing figure Axis,
+        centered at the x, y coordinates given."""
+                
+        ax.add_patch( Circle((self.coord.ra.degree, 
+                              self.coord.dec.degree), 
+                              self.radius, 
+                              edgecolor='yellow', 
+                              facecolor='none', linewidth=5.0,
+                              fill=False) )
+                                  
+        return ax
+        
     def count_stars_in_footprint(self,coords):
         """Method to count the number of stars within this footprint, 
         given a set of SkyCoords"""

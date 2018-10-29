@@ -13,7 +13,7 @@ from sys import argv
 class WFIRSTFootprint:
     
     def __init__(self):
-        polygons = [ np.array([[-0.01981411, -0.00567634], 
+        self.footprint = [ np.array([[-0.01981411, -0.00567634], 
                             [-0.08244734, 0.10480327], 
                             [0.02616297, 0.16866906], 
                             [0.08929735, 0.05732157], 
@@ -104,18 +104,61 @@ class WFIRSTFootprint:
                             [0.13472484, -0.39331510], 
                             [0.02894538, -0.45206931]]) ]
         
-        self.footprint = []
+        self.derotate_footprint()
         
-        for ccd in polygons:
+        scaled_footprint = []
+        
+        for ccd in self.footprint:
 
             ccd[:,0] = ccd[:,0] / 1.324
             ccd[:,1] = ccd[:,1] / 1.088
             
-            self.footprint.append(ccd)
+            scaled_footprint.append(ccd)
+        
+        self.footprint = scaled_footprint
+        
+    def derotate_footprint(self):
+        
+        rot = -30.0
+        ref_theta = 210.0 * np.pi/180.0
+        dtheta = rot * np.pi/180.0
+        
+        fov = []
+        
+        xr = [1e6,-1e6]
+        yr = [1e6,-1e6]
+        
+        for ccd in self.footprint:
+    
+            xprime = ccd[:,0]*np.cos(dtheta) - ccd[:,1]*np.sin(dtheta)
+            yprime = ccd[:,0]*np.sin(dtheta) + ccd[:,1]*np.cos(dtheta)
             
-    def draw_footprint(self,ax,x,y):
-        """Method to draw a WFIRST-WFI footprint on a pre-existing figure Axis,
-        centered at the x, y coordinates given."""
+            rot_ccd = np.zeros(ccd.shape)
+            
+            rot_ccd[:,0] = xprime
+            rot_ccd[:,1] = yprime
+            
+            fov.append(rot_ccd)
+            
+            if rot_ccd[:,0].min() < xr[0]:
+                xr[0] = rot_ccd[:,0].min()
+            if rot_ccd[:,0].max() > xr[1]:
+                xr[1] = rot_ccd[:,0].max()
+            if rot_ccd[:,1].min() < yr[0]:
+                yr[0] = rot_ccd[:,1].min()
+            if rot_ccd[:,1].max() > yr[1]:
+                yr[1] = rot_ccd[:,1].max()
+                
+        self.footprint = fov
+    
+    def offset_footprint(self,x,y):
+        """Method to offset the footprint definition to a specific location
+        Function returns an offset footprint definition, and changes 
+        the original.
+        WARNING: Offset approximate, only works for small deltas
+        """
+        
+        offset_fov = []
         
         for ccd in self.footprint:
             
@@ -123,8 +166,20 @@ class WFIRSTFootprint:
             
             ccd_on_sky[:,0] = ccd_on_sky[:,0] + x
             ccd_on_sky[:,1] = ccd_on_sky[:,1] + y
+        
+            offset_fov.append( ccd_on_sky )
+        
+        self.footprint = offset_fov
+        
+        return offset_fov
+        
+    def draw_footprint(self,ax):
+        """Method to draw a WFIRST-WFI footprint on a pre-existing figure Axis,
+        centered at the x, y coordinates given."""
+                
+        for ccd in self.footprint:
             
-            ax.add_patch( patches.Polygon( ccd_on_sky, fill=False ) )
+            ax.add_patch( patches.Polygon( ccd, fill=False ) )
 
         return ax
 
@@ -135,35 +190,30 @@ def plot_wfi_footprint(x=0.0,y=0.0):
 
     ax = fig.add_subplot(111, aspect='equal')
     
-    wfirst = WFIRSTFootprint()
+    wfi = WFIRSTFootprint()
     
-    wfirst.draw_footprint(ax,x,y)
-
-    rot_field = rotate_fov()
+    offset_fov = wfi.offset_footprint(x,y)
     
-    rot_field.draw_footprint(ax,x,y)
+    wfi.draw_footprint(ax)
     
     plt.axis([-1.0,1.0,-1.0,1.0])
     
     plt.grid()
     
-    fig.savefig('wfirst_wfi_footpring.png', dpi=90, bbox_inches='tight')
+    plt.xlabel('RA [deg]')
+    plt.ylabel('Dec [deg]')
+    
+    fig.savefig('wfirst_wfi_footprint.png', dpi=90, bbox_inches='tight')
 
-def rotate_fov():
+def rotate_footprint(fov):
     
     rot = -30.0
     ref_theta = 210.0 * np.pi/180.0
     dtheta = rot * np.pi/180.0
     
-    r = 0.491
-    wfirst = WFIRSTFootprint()
+    rot_fov = []
     
-    detector = []
-    
-    xr = [1e6,-1e6]
-    yr = [1e6,-1e6]
-    
-    for ccd in wfirst.footprint:
+    for ccd in fov.footprint:
 
         xprime = ccd[:,0]*np.cos(dtheta) - ccd[:,1]*np.sin(dtheta)
         yprime = ccd[:,0]*np.sin(dtheta) + ccd[:,1]*np.cos(dtheta)
@@ -173,7 +223,7 @@ def rotate_fov():
         rot_ccd[:,0] = xprime
         rot_ccd[:,1] = yprime
         
-        detector.append(rot_ccd)
+        rot_fov.append(rot_ccd)
         
         if rot_ccd[:,0].min() < xr[0]:
             xr[0] = rot_ccd[:,0].min()
@@ -184,13 +234,81 @@ def rotate_fov():
         if rot_ccd[:,1].max() > yr[1]:
             yr[1] = rot_ccd[:,1].max()
             
-    wfirst.footprint = detector
+    fov.footprint = rot_fov
     
-    print('X range ',xr,(xr[1]-xr[0]))
-    print('Y range ',yr,(yr[1]-yr[0]))
+    return fov
+
+def bulge_survey_footprint(ra_centre, dec_centre):
+    """Function to produce a set of WFIRST-WFI footprints describing the
+    survey region included in the WFIRST Galactic Bulge Survey.
+    Currently, this consists of 8 contiguous WFIRST pointings.
+    Coordinates of the survey pointing centre should be in decimal degrees
+    """
     
-    return wfirst
+    survey_footprint = []
     
+    f1 = WFIRSTFootprint()
+    f1.offset_footprint( ra_centre-((23.0+11.5)/60.0), dec_centre+22.5/60.0 )
+    survey_footprint.append( f1 )
+    
+    f2 = WFIRSTFootprint()
+    f2.offset_footprint( ra_centre-11.5/60.0, dec_centre+22.5/60.0 )
+    survey_footprint.append( f2 )
+    
+    f3 = WFIRSTFootprint()
+    f3.offset_footprint( ra_centre+11.5/60.0, dec_centre+22.5/60.0 )
+    survey_footprint.append( f3 )
+    
+    f4 = WFIRSTFootprint()
+    f4.offset_footprint( ra_centre+((23.0+11.5)/60.0), dec_centre+22.5/60.0 )
+    survey_footprint.append( f4 )
+    
+    f5 = WFIRSTFootprint()
+    f5.offset_footprint( ra_centre-((23.0+11.5)/60.0), dec_centre-22.5/60.0 )
+    survey_footprint.append( f5 )
+    
+    f6 = WFIRSTFootprint()
+    f6.offset_footprint( ra_centre-11.5/60.0, dec_centre-22.5/60.0 )
+    survey_footprint.append( f6 )
+    
+    f7 = WFIRSTFootprint()
+    f7.offset_footprint( ra_centre+11.5/60.0, dec_centre-22.5/60.0 )
+    survey_footprint.append( f7 )
+    
+    f8 = WFIRSTFootprint()
+    f8.offset_footprint( ra_centre+((23.0+11.5)/60.0), dec_centre-22.5/60.0 )
+    survey_footprint.append( f8 )
+    
+    return survey_footprint
+
+
+def plot_bulge_survey_footprint():
+    """Function to plot the footprint of WFIRST's WFI"""
+
+    ra_centre = 0.0
+    dec_centre = 0.0
+    
+    survey = bulge_survey_footprint(ra_centre, dec_centre)
+    
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111, aspect='equal')
+    
+    for pointing in survey:
+        
+        pointing.draw_footprint(ax)
+    
+    plt.plot([ra_centre],[dec_centre],'r+')
+    
+    plt.axis([-2.0,2.0,-2.0,2.0])
+    
+    plt.grid()
+    
+    plt.xlabel('RA [deg]')
+    plt.ylabel('Dec [deg]')
+    
+    fig.savefig('wfirst_bulge_survey_footprint.png', dpi=90, bbox_inches='tight')
+
 if __name__ == '__main__':
     
     if len(argv) == 1:
@@ -201,4 +319,5 @@ if __name__ == '__main__':
         y = float(argv[2])
     
     plot_wfi_footprint(x=x,y=y)
+    plot_bulge_survey_footprint()
     
