@@ -50,6 +50,8 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
         hrs_per_night = []
         jds = []
         
+        f = open('target_visibility_windows.txt','w')
+        
         for d in dates:
             
             jds.append(d.jd)
@@ -88,6 +90,22 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 
                 ts_vis = ts[idx]
                 
+                midyear = Time(str(int(d.decimalyear))+'-07-15T00:00:00.0', format='isot', scale='utc')
+                
+                if d < midyear:
+                    f.write(ts_vis.min().value+' '+ts_vis.max().value+'\n')
+                else:
+                    midday = Time(d.datetime.date().strftime("%Y-%m-%d")+'T12:00:00.0', 
+                                  format='isot', scale='utc')
+                
+                    k = np.where(ts_vis < midday)
+                    tmax = ts_vis[k].max()
+                    
+                    k = np.where(ts_vis > midday)
+                    tmin = ts_vis[k].min()
+                    
+                    f.write(tmin.value+' '+tmax.value+'\n')
+                
                 tvis = cadence * len(ts_vis)
                 
                 total_time_visible += tvis
@@ -109,10 +127,16 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 if verbose:
                     print('Target not visible from LSST on '+tstr)
         
-        if diagnostics:
+        f.close()
+        
+        if diagnostics and len(dates) > 0:
             
             plot_visibility(jds, target_alts, sun_alts, 
                             hrs_visible_per_night, min_alt)
+                            
+        elif diagnostics and len(dates) == 0:
+            
+            raise IOError('WARNING: invalid date range input')
             
         return total_time_visible, hrs_visible_per_night
 
