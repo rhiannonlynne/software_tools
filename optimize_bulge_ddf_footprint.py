@@ -16,6 +16,7 @@ from matplotlib.patches import Circle
 from os import path
 from sys import argv
 import numpy as np
+import bulge_globular_clusters
 
 def optimize_survey_footprint():
     """Function to optimize the DDF survey footprint"""
@@ -29,6 +30,13 @@ def optimize_survey_footprint():
     
     wfirst_survey = wfirst_fov.bulge_survey_footprint(survey_centre.ra.degree,
                                                       survey_centre.dec.degree)
+    
+    gcs = bulge_globular_clusters.get_globular_clusters()
+    
+    gcs = np.array(gcs.values())
+    gc_coords = SkyCoord(gcs[:,0],gcs[:,1], unit=(u.deg, u.deg))
+    
+    lsst.count_stars_in_footprint(gc_coords)
     
     params['search_radius'] = 0.5  # deg
     

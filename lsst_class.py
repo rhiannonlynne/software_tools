@@ -8,6 +8,7 @@ Created on Fri Oct 26 21:53:46 2018
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from matplotlib.patches import Circle
+import numpy as np
 
 class LSSTFootprint:
     """Class describing the parameters of a single LSST field of view"""
