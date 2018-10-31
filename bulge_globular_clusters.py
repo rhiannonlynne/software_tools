@@ -8,7 +8,7 @@ Created on Wed Oct 31 11:20:49 2018
 def get_globular_clusters():
     """Function to return data on a set of Globular Clusters in the Galactic
     Bulge, discovered by 'Minniti, D. et al and published in
-    2017RNAAS,1a,16 and 2017RNAAS,1a,5
+    2017RNAAS,1a,16 and 2017RNAAS,1a,5 and 2017ApJ,849L,24.
     """
     
     gcs = { 'Minni 01': [278.698, -28.711],
