@@ -25,7 +25,7 @@ def simulate_bd_lightcurve():
     down_lci = downsample_lightcurve(params,lci,vis_windows)
     down_lcz = downsample_lightcurve(params,lcz,vis_windows)
     
-    plot_lc(lci, lcz, down_lci, down_lcz, params)
+    plot_lc(lci, lcz, down_lci, down_lcz, params, 'SDSS-i', 'Pan-STARRS-Z')
     
     output_down_lc(down_lci, params, 'downsampled_lc_i.txt')
     output_down_lc(down_lcz, params, 'downsampled_lc_z.txt')
@@ -170,7 +170,7 @@ def downsample_lightcurve(params,lc,vis_windows):
     
     return down_lc
 
-def plot_lc(lc1, lc2,down_lc1,down_lc2,params):
+def plot_lc(lc1, lc2,down_lc1,down_lc2,params,label1,label2):
     """Function to output the downsampled lightcurves"""
     
     yoffset = -0.1
@@ -185,13 +185,13 @@ def plot_lc(lc1, lc2,down_lc1,down_lc2,params):
     
     plt.errorbar(down_lc1[:,0]-xoffset, down_lc1[:,1], yerr=down_lc1[:,2], 
                  marker='.', mfc='red', mec='red', ecolor='red', 
-                 ms=2, mew=4, linestyle='none')
+                 ms=2, mew=4, linestyle='none',label=label1)
     
     plt.plot(lc1[:,0]-xoffset, lc1[:,1], 'r-', alpha=0.2)
                  
     plt.errorbar(down_lc2[:,0]-xoffset, down_lc2[:,1]+yoffset, yerr=down_lc2[:,2], 
                  marker='.', mfc='black', mec='black', ecolor='black', 
-                 ms=2, mew=4, linestyle='none')
+                 ms=2, mew=4, linestyle='none',label=label2)
     
     plt.plot(lc2[:,0]-xoffset, lc2[:,1]+yoffset, 'k-', alpha=0.2)
     
@@ -205,6 +205,7 @@ def plot_lc(lc1, lc2,down_lc1,down_lc2,params):
     
     plt.grid()
     
+    plt.legend()
     
     plt.savefig(path.join(params['output_dir'],'resampled_lc.png'), bbox_inches='tight')
     
