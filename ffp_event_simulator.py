@@ -263,10 +263,12 @@ def plot_fitted_lightcurves(lc1, lc2, event1, event2, label1, label2, file_path,
     fig = plt.figure(1,(10,10))
     plt.subplot(1,1,1)
                  
-    plt.plot(ts1,lc1[:,1],marker='.',alpha=0.5,color='#8c6931',linestyle='None',
+    plt.plot(ts1,lc1[:,1],marker='.',markersize=10,
+             alpha=0.5,color='#8c6931',linestyle='None',
                 label=label1)
                 
-    plt.plot(ts2,lc2[:,1],marker='.',alpha=0.5,color='#2b8c85',linestyle='None',
+    plt.plot(ts2,lc2[:,1],marker='.',markersize=10,
+             alpha=0.5,color='#2b8c85',linestyle='None',
                 label=label2)
                 
     if plot_models:
@@ -280,11 +282,11 @@ def plot_fitted_lightcurves(lc1, lc2, event1, event2, label1, label2, file_path,
         plt.plot(ts2,model_lc2,linestyle='solid',
                      color='black')
         
-    plt.xlabel('HJD - '+str(dt), fontsize=18)
+    plt.xlabel('HJD - '+str(dt), fontsize=24)
 
-    plt.ylabel('Magnitude', fontsize=18)
+    plt.ylabel('Magnitude', fontsize=24)
     
-    plt.legend(loc=1, fontsize=16)
+    plt.legend(loc=1, fontsize=20)
     
     plt.grid()
     
@@ -296,8 +298,8 @@ def plot_fitted_lightcurves(lc1, lc2, event1, event2, label1, label2, file_path,
         tmax = t0 - dt + 1.5*tE
         plt.axis([tmin,tmax,ymax,ymin])
 
-    plt.tick_params(axis='x', labelsize=18)
-    plt.tick_params(axis='y', labelsize=18)
+    plt.tick_params(axis='x', labelsize=24)
+    plt.tick_params(axis='y', labelsize=24)
     
     plt.savefig(file_path, bbox_inches='tight')
 

@@ -49,6 +49,8 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
         hrs_visible_per_night = []
         hrs_per_night = []
         jds = []
+        n_nights_low_vis = 0
+        n_nights_hi_vis = 0
         
         f = open('target_visibility_windows.txt','w')
         
@@ -91,24 +93,35 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
                 ts_vis = ts[idx]
                 
                 midyear = Time(str(int(d.decimalyear))+'-07-15T00:00:00.0', format='isot', scale='utc')
+                lateyear = Time(str(int(d.decimalyear))+'-11-10T00:00:00.0', format='isot', scale='utc')
                 
-                if d < midyear:
-                    f.write(ts_vis.min().value+' '+ts_vis.max().value+'\n')
+                tvis = cadence * len(ts_vis)
+                
+                total_time_visible += tvis
+                
+                hrs_visible_tonight = tvis*24.0
+                
+                if hrs_visible_tonight >= 0.5 and hrs_visible_tonight < 4.0:
+                    n_nights_low_vis += 1
+                    
+                elif hrs_visible_tonight >= 4.0:
+                    n_nights_hi_vis += 1
+                    
+                if d < midyear or d > lateyear:
+                    f.write(ts_vis.min().value+' '+ts_vis.max().value+' '+str(hrs_visible_tonight)+'\n')
                 else:
                     midday = Time(d.datetime.date().strftime("%Y-%m-%d")+'T12:00:00.0', 
                                   format='isot', scale='utc')
                 
                     k = np.where(ts_vis < midday)
-                    tmax = ts_vis[k].max()
-                    
-                    k = np.where(ts_vis > midday)
-                    tmin = ts_vis[k].min()
-                    
-                    f.write(tmin.value+' '+tmax.value+'\n')
-                
-                tvis = cadence * len(ts_vis)
-                
-                total_time_visible += tvis
+                    print(k)
+                    if len(k) > 0:
+                        tmax = ts_vis[k].max()
+                        
+                        k = np.where(ts_vis > midday)
+                        tmin = ts_vis[k].min()
+                        
+                        f.write(tmin.value+' '+tmax.value+' '+str(hrs_visible_tonight)+'\n')
                 
                 #target_alts.append(alts[idx].max())
                 
@@ -137,7 +150,10 @@ def calculate_lsst_field_visibility(fieldRA,fieldDec,start_date,end_date,
         elif diagnostics and len(dates) == 0:
             
             raise IOError('WARNING: invalid date range input')
-            
+        
+        print('N nights at low visibility = '+str(n_nights_low_vis))
+        print('N nights at hi visibility = '+str(n_nights_hi_vis))
+        
         return total_time_visible, hrs_visible_per_night
 
 def plot_visibility(ts, target_alts, sun_alts, 

@@ -18,7 +18,7 @@ import matplotlib.dates as mdates
 from datetime import datetime, timedelta
 
 def calc_hours_visibility_from_LSST(pointing, start_date, end_date, 
-                                    n_exp_visit, cadence):
+                                    n_exp_visit, cadence, exp_time):
     """Function to calculate the number of hours a given pointing is visible
     from LSST between specified dates.
     
@@ -111,7 +111,8 @@ def calc_hours_visibility_from_LSST(pointing, start_date, end_date,
             hrs_visible_per_night.append( mins_visible/60.0 )
         
         (n_visits, obs_time) = calc_lsst_observing_time(hrs_visible_per_night[-1],
-                                                        cadence,n_exp_visit)
+                                                        cadence,n_exp_visit,
+                                                        exp_time)
         
         n_visits_per_night.append(n_visits)
         obs_time_per_night.append(obs_time)
@@ -277,7 +278,7 @@ def plot_visibility(pointing, jd_dates, dates, target_alts, sun_alts,
     
     plt.close()
 
-def calc_lsst_observing_time(hrs_visible_per_night,cadence,n_exp_visit):
+def calc_lsst_observing_time(hrs_visible_per_night,cadence,n_exp_visit,exp_time):
     """Function to calculate how much observing time would be used in a given
     night (including overheads), for a given cadence of re-visiting the 
     pointing provided.
@@ -294,10 +295,9 @@ def calc_lsst_observing_time(hrs_visible_per_night,cadence,n_exp_visit):
     """
     
     # Overheads quoted in seconds
-    readout = 2.0 #5
-    slew = 12.0  #20
-    filter_change = 8.0 #20
-    exp_time = 15.0
+    readout = 0.0 # -> 2s, but included in slew
+    slew = 12.0  
+    filter_change = 120.0 
     
     # Time required for a single visit [secs]:
     visit_time = slew + filter_change + n_exp_visit * (exp_time + readout)
@@ -327,6 +327,7 @@ if __name__ == '__main__':
         date2 = input('Please enter the end of the visibility window [YYYY-MM-DD]: ')
         n_exp_visit = int(input('Please enter the number of exposures per visit [int]: '))
         cadence = float(input('Please enter the interval between visits to target [hrs]: '))
+        exp_time = float(input('Please enter the exposure time in seconds: '))
         
     else:
         
@@ -337,8 +338,10 @@ if __name__ == '__main__':
         date2 = argv[5]
         n_exp_visit = int(argv[6])
         cadence = float(argv[7])
-    
+        exp_time = float(argv[8])
+        
     pointing = (name, ra, dec)
     
-    calc_hours_visibility_from_LSST(pointing, date1, date2, n_exp_visit, cadence)
+    calc_hours_visibility_from_LSST(pointing, date1, date2, n_exp_visit, 
+                                    cadence, exp_time)
     
