@@ -9,6 +9,7 @@ from astropy.coordinates import Galactic, TETE, SkyCoord
 # Configuration
 STAR_MAP_DIR = '/Users/rstreet1/software/LSST-TVSSC_software_tools/star_density_maps'
 STAR_MAP_FILE = 'TRIstarDensity_r_nside_64.npz'
+OUTPUT_DIR = './footprint_maps'
 
 def load_star_density_map(limiting_mag=28.0):
 
@@ -101,7 +102,6 @@ def bono_survey_regions():
 
 NSIDE = 64
 NPIX = hp.nside2npix(NSIDE)
-m = np.zeros(NPIX)
 
 # Trilegal data is in Galactic coordinates, so this needs to be rotated in
 # order to map it to healpix
@@ -112,26 +112,49 @@ hp_log_star_density = np.log10(hp_star_density)
 ahp = HEALPix(nside=NSIDE, order='ring', frame=TETE())
 
 # Galactic Plane survey regions, -85.0 < l (phi) <+85.0◦, -10.0 < b (theta) <+10.0◦
+# Street: griz, cadence 2-3d
+# Gonzales survey 1: i, N visits over 10yrs
+# Gonzales survey 2: grizy, Year 1 only
+# Bono shallow: ugrizy 2-3d cadence (WFD)
+# Bono deep: izy, 2-3d cadence (WFD)
+# Straeder: ugrizy 2-3d cadence or rolling
+filterset_gp = { 'u': 0.1, 'g': 0.3, 'r': 0.3, 'i': 0.3, 'z': 0.2, 'y': 0.1 }
 gp_region_pix1 = calc_hp_pixels_for_region(43.5, 0.0, 85.0, 20.0, 500, ahp)
 gp_region_pix2 = calc_hp_pixels_for_region(317.5, 0.0, 85.0, 20.0, 500, ahp)
 gp_region_pix = np.concatenate((gp_region_pix1.flatten(),gp_region_pix2.flatten()))
 
+filterset_Gonzalez_gp = { 'u': 0.0, 'g': 0.0, 'r': 0.0, 'i': 1.0, 'z': 0.0, 'y': 0.0 }
 gp_region_pix1 = calc_hp_pixels_for_region(7.5, 0.0, 15.0, 20.0, 500, ahp)
 gp_region_pix2 = calc_hp_pixels_for_region(352.5, 0.0, 15.0, 20.0, 500, ahp)
 Gonzalez_gp_pix = np.concatenate((gp_region_pix1.flatten(),gp_region_pix2.flatten()))
 
 (Bono_shallow_pix, Bono_deep_pix) = bono_survey_regions()
+filterset_bono_shallow = { 'u': 0.1, 'g': 0.1, 'r': 0.2, 'i': 0.2, 'z': 0.2, 'y': 0.2 }
+filterset_bono_deep = { 'u': 0.0, 'g': 0.0, 'r': 0.0, 'i': 0.4, 'z': 0.3, 'y': 0.3 }
 
 # Magellenic Clouds regions
+# Poleski: gri, <1d cadence
+# Street: griz, 2-3d cadence
+# Clementini: gri, WFD cadence
+# Olsen: ugrizy, WFD, logarithmic spacing
 # LMC  277.77 - 283.155, -35.17815 - -30.59865
+filterset_LMC = { 'u': 0.0, 'g': 0.2, 'r': 0.2, 'i': 0.2, 'z': 0.2, 'y': 0.1 }
 LMC_pix = calc_hp_pixels_for_region(280.4652, -32.888443, (322.827/60), (274.770/60), 100, ahp)
 
 # SMC 301.4908 - 304.126, -45.1036 - -43.5518
+filterset_SMC = { 'u': 0.0, 'g': 0.2, 'r': 0.2, 'i': 0.2, 'z': 0.2, 'y': 0.1 }
 SMC_pix = calc_hp_pixels_for_region(302.8084, -44.3277, (158.113/60), (93.105/60), 100, ahp)
 
+# Street: griz, simultaneous with Rubin + 3d cadence in same years
+# Straeder: ugrizy 2-3d cadence or rolling
+# Bono shallow: ugrizy 2-3d cadence (WFD)
+# Bono deep: izy, 2-3d cadence (WFD)
+filterset_bulge = { 'u': 0.1, 'g': 0.2, 'r': 0.3, 'i': 0.3, 'z': 0.2, 'y': 0.2 }
 bulge_pix = calc_hp_pixels_for_region(2.216, -3.14, 3.5, 3.5, 50, ahp)
 
 # Clementini survey regions
+# gri, WFD cadence
+filterset_Clementini = { 'u': 0.0, 'g': 0.3, 'r': 0.4, 'i': 0.3, 'z': 0.0, 'y': 0.0 }
 M54_pix = calc_hp_pixels_for_region(5.60703,-14.08715, 3.5, 3.5, 20, ahp)
 Sculptor_pix = calc_hp_pixels_for_region(287.5334, -83.1568, 3.5, 3.5, 20, ahp)
 Carina_pix = calc_hp_pixels_for_region(260.1124, -22.2235, 3.5, 3.5, 20, ahp)
@@ -142,7 +165,9 @@ Clementini_regions = np.concatenate((M54_pix.flatten(), Sculptor_pix.flatten()))
 for cluster in [Carina_pix, Fornax_pix, Phoenix_pix, Antlia2_pix]:
     Clementini_regions = np.concatenate((Clementini_regions, cluster.flatten()))
 
-# Bonito survey regions
+# Bonito survey regions - WFD obs valuable here?
+# ugrizy in WFD plus additional gri every 30min, 10hrs/night for 7 nights.
+filterset_Bonito = { 'u': 0.1, 'g': 0.1, 'r': 0.1, 'i': 0.1, 'z': 0.1, 'y': 0.1 }
 EtaCarina_pix = calc_hp_pixels_for_region(287.5967884538, -0.6295111793, 3.5, 3.5, 20, ahp)
 OrionNebula_pix = calc_hp_pixels_for_region(209.0137, -19.3816, 3.5, 3.5, 20, ahp)
 NGC2264_pix = calc_hp_pixels_for_region(202.9358, 2.1957, 3.5, 3.5, 20, ahp)
@@ -162,78 +187,128 @@ high_priority_regions = {'Galactic_Plane': gp_region_pix,
                          'Galactic_Bulge': bulge_pix,
                          'Clementini_regions': Clementini_regions,
                          'Bonito_regions': Bonito_regions}
-regions_outside_plane = [LMC_pix, SMC_pix, Clementini_regions, Bonito_regions]
+regions_outside_plane = {'LMC': {'pixel_region': LMC_pix, 'filterset': filterset_LMC},
+                         'SMC': {'pixel_region': SMC_pix, 'filterset': filterset_SMC},
+                         'Clementini': {'pixel_region': Clementini_regions, 'filterset': filterset_Clementini},
+                         'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito}
+                         }
 
 # Plotting scale range:
 plot_min = 0.598
 plot_max = 7.545
 
 # Plot all regions separately for reference:
-for name,region in high_priority_regions.items():
-    map = np.zeros(NPIX)
-    map[region] = hp_star_density[region]
+plotSeparate = False
+if plotSeparate:
+    for name,region in high_priority_regions.items():
+        map = np.zeros(NPIX)
+        map[region] = hp_star_density[region]
+
+        fig = plt.figure(1,(10,10))
+        hp.mollview(np.log10(map), title=name,
+                    min=plot_min, max=plot_max)
+        hp.graticule()
+        plt.tight_layout()
+        plt.savefig(path.join(OUTPUT_DIR,name+'_footprint_map'+'.png'))
+        plt.close(1)
+
+# Maximum footprint map:
+plotMaxFootprint = False
+if plotMaxFootprint:
+    max_footprint_map = np.zeros(NPIX)
+    for region_name, region_pix in high_priority_regions.items():
+        max_footprint_map[region_pix] = hp_star_density[region_pix]
 
     fig = plt.figure(1,(10,10))
-    hp.mollview(np.log10(map), title=name,
+    hp.mollview(np.log10(max_footprint_map), title="Priority regions of the Galactic Plane - maximum footprint",
                 min=plot_min, max=plot_max)
     hp.graticule()
     plt.tight_layout()
-    plt.savefig(name+'_footprint_map'+'.png')
+    plt.savefig(path.join(OUTPUT_DIR,'max_GalPlane_footprint_map.png'))
     plt.close(1)
 
-# Maximum footprint map:
-max_footprint_map = np.zeros(NPIX)
-for region_name, region_pix in high_priority_regions.items():
-    max_footprint_map[region_pix] = hp_star_density[region_pix]
-
-fig = plt.figure(1,(10,10))
-hp.mollview(np.log10(max_footprint_map), title="Priority regions of the Galactic Plane - maximum footprint",
-            min=plot_min, max=plot_max)
-hp.graticule()
-plt.tight_layout()
-plt.savefig('max_GalPlane_footprint_map.png')
-plt.close(1)
-
 # Medium footprint map
-density_thresholds = [ 0.75, 0.80 ]
-for threshold in density_thresholds:
-    medium_footprint_map = np.zeros(NPIX)
-    idx = np.where(hp_log_star_density >= threshold*hp_log_star_density.max())[0]
-    medium_footprint_map[idx] = hp_star_density[idx]
-    for region_pix in regions_outside_plane:
-        medium_footprint_map[region_pix] = hp_star_density[region_pix]
+plotMediumFootprint = False
+if plotMediumFootprint:
+    density_thresholds = { 0.60: 0.8, 0.70: 0.9, 0.80: 1.0 }
+    for f, filter_weight in filterset_gp.items():
+        for threshold, location_weight in density_thresholds.items():
+            medium_footprint_map = np.zeros(NPIX)
+            idx = np.where(hp_log_star_density >= threshold*hp_log_star_density.max())[0]
+            medium_footprint_map[idx] = hp_star_density[idx]
 
-    plot_min = threshold * plot_max
-    fig = plt.figure(2,(10,10))
-    hp.mollview(np.log(medium_footprint_map),
-                title="Priority regions of the Galactic Plane - medium footprint, "+\
-                    str(round(threshold*100.0,0))+'% of max threshold')
-    hp.graticule()
-    plt.tight_layout()
-    plt.savefig('medium_GalPlane_footprint_map_'+str(round(threshold*100.0,0))+'.png')
-    plt.close(2)
+            for name, region in regions_outside_plane:
+                medium_footprint_map[region['pixel_region']] = hp_star_density[region['pixel_region']]
+
+            plot_min = threshold * plot_max
+            fig = plt.figure(2,(10,10))
+            hp.mollview(np.log(medium_footprint_map),
+                        title="Priority regions of the Galactic Plane - medium footprint, "+\
+                            str(round(threshold*100.0,0))+'% of max threshold')
+            hp.graticule()
+            plt.tight_layout()
+            plt.savefig(path.join(OUTPUT_DIR,'medium_GalPlane_footprint_map_'+str(round(threshold*100.0,0))+'.png'))
+            plt.close(2)
+
+# Normalize the vote map for the GP by the maximal footprint:
+#min_density = np.array(list(density_thresholds.keys())).min()
+#threshold = density_thresholds[min_density]
+#idx = np.where(hp_log_star_density >= threshold*hp_log_star_density.max())[0]
+#vote_maps[idx] = vote_maps[idx]/vote_maps[idx].max()
 
 # Minimum footprint map
-minimum_footprint_map = np.zeros(NPIX)
-regions = [Bono_deep_pix,
-LMC_pix, SMC_pix, bulge_pix,
-Clementini_regions, Bonito_regions]
-for region_pix in regions:
-    minimum_footprint_map[region_pix] = hp_star_density[region_pix]
+plotMinimumFootprint = False
+if plotMinimumFootprint:
+    minimum_footprint_map = np.zeros(NPIX)
+    regions = [Bono_deep_pix,
+    LMC_pix, SMC_pix, bulge_pix,
+    Clementini_regions, Bonito_regions]
+    for region_pix in regions:
+        minimum_footprint_map[region_pix] = hp_star_density[region_pix]
 
-fig = plt.figure(3,(10,10))
-hp.mollview(np.log10(minimum_footprint_map), title="Priority regions of the Galactic Plane - minimum footprint")
-hp.graticule()
-plt.tight_layout()
-plt.savefig('min_GalPlane_footprint_map.png')
-plt.close(3)
+    fig = plt.figure(3,(10,10))
+    hp.mollview(np.log10(minimum_footprint_map), title="Priority regions of the Galactic Plane - minimum footprint")
+    hp.graticule()
+    plt.tight_layout()
+    plt.savefig(path.join(OUTPUT_DIR,'min_GalPlane_footprint_map.png'))
+    plt.close(3)
 
-plot_min = 0.598
-plot_max = 7.545
-fig = plt.figure(4,(10,10))
-hp.mollview(np.log10(hp_star_density), title="Density of stars within Rubin viewing zone",
-            min=plot_min, max=plot_max)
-hp.graticule()
-plt.tight_layout()
-plt.savefig('rubin_star_density_map.png')
-plt.close(4)
+    plot_min = 0.598
+    plot_max = 7.545
+    fig = plt.figure(4,(10,10))
+    hp.mollview(np.log10(hp_star_density), title="Density of stars within Rubin viewing zone",
+                min=plot_min, max=plot_max)
+    hp.graticule()
+    plt.tight_layout()
+    plt.savefig(path.join(OUTPUT_DIR,'rubin_star_density_map.png'))
+    plt.close(4)
+
+# Prioritized footprint:
+# Add the regions outside the plane with votes equivalent to the number of star
+# density thresholds used for the Plane, to give parity.
+density_thresholds = { 0.60: 0.8, 0.70: 0.9, 0.80: 1.0 }
+vote_maps = {}
+for f, filter_weight in filterset_gp.items():
+    vote_maps[f] = np.zeros(NPIX)
+    for threshold, location_weight in density_thresholds.items():
+        idx = np.where(hp_log_star_density >= threshold*hp_log_star_density.max())[0]
+        vote_maps[f][idx] += location_weight * filter_weight
+
+for name, region in regions_outside_plane.items():
+    for f, filter_weight in region['filterset'].items():
+        vote_maps[f][region['pixel_region']] += filter_weight * 1.0
+
+
+for f in filterset_gp.keys():
+    current_max = vote_maps[f].max()*1.0
+    #norm = vote_maps[f].max()
+    #vote_maps[f] = vote_maps[f]/norm
+    fig = plt.figure(3,(10,10))
+    hp.mollview(vote_maps[f], title="Priority regions of the Galactic Plane, "+str(f)+"-band",
+                min=0.0, max=1.0)
+    hp.graticule()
+    plt.tight_layout()
+    plt.savefig(path.join(OUTPUT_DIR,'priority_GalPlane_footprint_map_'+str(f)+'.png'))
+    plt.close(3)
+
+    hp.write_map(path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits', vote_maps[f], overwrite=True))
