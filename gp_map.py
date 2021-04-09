@@ -111,7 +111,7 @@ hp_log_star_density = np.log10(hp_star_density)
 
 ahp = HEALPix(nside=NSIDE, order='ring', frame=TETE())
 
-# Galactic Plane survey regions, -85.0 < l (phi) <+85.0◦, -10.0 < b (theta) <+10.0◦
+# Galactic Plane survey regions, -85.0 < l <+85.0◦, -10.0 < b <+10.0◦
 # Street: griz, cadence 2-3d
 # Gonzales survey 1: i, N visits over 10yrs
 # Gonzales survey 2: grizy, Year 1 only
@@ -119,8 +119,8 @@ ahp = HEALPix(nside=NSIDE, order='ring', frame=TETE())
 # Bono deep: izy, 2-3d cadence (WFD)
 # Straeder: ugrizy 2-3d cadence or rolling
 filterset_gp = { 'u': 0.1, 'g': 0.3, 'r': 0.3, 'i': 0.3, 'z': 0.2, 'y': 0.1 }
-gp_region_pix1 = calc_hp_pixels_for_region(43.5, 0.0, 85.0, 20.0, 500, ahp)
-gp_region_pix2 = calc_hp_pixels_for_region(317.5, 0.0, 85.0, 20.0, 500, ahp)
+gp_region_pix1 = calc_hp_pixels_for_region(43.5, 0.0, 90.0, 20.0, 500, ahp)
+gp_region_pix2 = calc_hp_pixels_for_region(317.5, 0.0, 90.0, 20.0, 500, ahp)
 gp_region_pix = np.concatenate((gp_region_pix1.flatten(),gp_region_pix2.flatten()))
 
 filterset_Gonzalez_gp = { 'u': 0.0, 'g': 0.0, 'r': 0.0, 'i': 1.0, 'z': 0.0, 'y': 0.0 }
@@ -131,6 +131,11 @@ Gonzalez_gp_pix = np.concatenate((gp_region_pix1.flatten(),gp_region_pix2.flatte
 (Bono_shallow_pix, Bono_deep_pix) = bono_survey_regions()
 filterset_bono_shallow = { 'u': 0.1, 'g': 0.1, 'r': 0.2, 'i': 0.2, 'z': 0.2, 'y': 0.2 }
 filterset_bono_deep = { 'u': 0.0, 'g': 0.0, 'r': 0.0, 'i': 0.4, 'z': 0.3, 'y': 0.3 }
+
+filterset_Bonito_gp = { 'u': 0.0, 'g': 0.3, 'r': 0.4, 'i': 0.3, 'z': 0.0, 'y': 0.0 }
+gp_region_pix1 = calc_hp_pixels_for_region(43.5, 0.0, 90.0, 5.0, 500, ahp)
+gp_region_pix2 = calc_hp_pixels_for_region(317.5, 0.0, 90.0, 5.0, 500, ahp)
+Bonito_gp_pix = np.concatenate((gp_region_pix1.flatten(),gp_region_pix2.flatten()))
 
 # Magellenic Clouds regions
 # Poleski: gri, <1d cadence
@@ -178,19 +183,21 @@ for cluster in [NGC2264_pix, NGC6530_pix, NGC6611_pix]:
     Bonito_regions = np.concatenate((Bonito_regions, cluster.flatten()))
 
 # List of high-priority survey regions, in the form of HP pixels:
+# Bonito regions as these need an intensive DDF-life strategy
 high_priority_regions = {'Galactic_Plane': gp_region_pix,
                          'Gonzalez_Plane_region': Gonzalez_gp_pix,
+                         'Bonito_Plane_region': Bonito_gp_pix,
                          'Bono_shallow_survey': Bono_shallow_pix,
                          'Bono_deep_survey': Bono_deep_pix,
                          'Large_Magellenic_Cloud': LMC_pix,
                          'Small_Magellenic_Cloud': SMC_pix,
                          'Galactic_Bulge': bulge_pix,
-                         'Clementini_regions': Clementini_regions,
-                         'Bonito_regions': Bonito_regions}
+                         'Clementini_regions': Clementini_regions}
+#                         'Bonito_regions': Bonito_regions}
 regions_outside_plane = {'LMC': {'pixel_region': LMC_pix, 'filterset': filterset_LMC},
                          'SMC': {'pixel_region': SMC_pix, 'filterset': filterset_SMC},
                          'Clementini': {'pixel_region': Clementini_regions, 'filterset': filterset_Clementini},
-                         'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito}
+#                         'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito}
                          }
 
 # Plotting scale range:
@@ -311,4 +318,4 @@ for f in filterset_gp.keys():
     plt.savefig(path.join(OUTPUT_DIR,'priority_GalPlane_footprint_map_'+str(f)+'.png'))
     plt.close(3)
 
-    hp.write_map(path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits', vote_maps[f], overwrite=True))
+    hp.write_map(path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits'), vote_maps[f], overwrite=True)
