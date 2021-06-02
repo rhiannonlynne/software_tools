@@ -5,6 +5,7 @@ from os import path
 from astropy import units as u
 from astropy_healpix import HEALPix
 from astropy.coordinates import Galactic, TETE, SkyCoord
+import gc_all_lsst_field
 
 # Configuration
 STAR_MAP_DIR = '/Users/rstreet1/software/LSST-TVSSC_software_tools/star_density_maps'
@@ -70,8 +71,14 @@ def calc_hp_pixels_for_region(l_center, b_center, l_width, b_height, n_points, a
 
     halfwidth_l = l_width / 2.0
     halfheight_b = b_height / 2.0
-    l = np.linspace(l_center-halfwidth_l, l_center+halfwidth_l, n_points) * u.deg
-    b = np.linspace(b_center-halfheight_b, b_center+halfheight_b, n_points) * u.deg
+
+    l_min = max( (l_center-halfwidth_l), 0 )
+    l_max = min( (l_center+halfwidth_l), 360.0 )
+    b_min = max( (b_center-halfheight_b), -90.0 )
+    b_max = min( (b_center+halfheight_b), 90.0 )
+
+    l = np.linspace(l_min, l_max, n_points) * u.deg
+    b = np.linspace(b_min, b_max, n_points) * u.deg
 
     LL,BB = np.meshgrid(l, b)
 
@@ -99,6 +106,21 @@ def bono_survey_regions():
     deep_pix = ahp.skycoord_to_healpix(coords)
 
     return shallow_pix, deep_pix
+
+def load_SFR():
+    data_file = 'Handbook_Distances_Zucker2020.dat'
+    f = open(data_file, 'r')
+    file_lines = f.readlines()
+    f.close()
+
+    SFR_list = []
+    for line in file_lines:
+        if 'name l b' not in line:
+            entries = line.replace('\n','').split()
+            sfr = {'name': entries[0], 'l': float(entries[1]), 'b': float(entries[2])}
+            SFR_list.append(sfr)
+
+    return SFR_list
 
 NSIDE = 64
 NPIX = hp.nside2npix(NSIDE)
@@ -182,6 +204,26 @@ Bonito_regions = np.concatenate((EtaCarina_pix.flatten(), OrionNebula_pix.flatte
 for cluster in [NGC2264_pix, NGC6530_pix, NGC6611_pix]:
     Bonito_regions = np.concatenate((Bonito_regions, cluster.flatten()))
 
+# Globular clusters - Figuera Jaimes, Di Stefano
+filterset_gc = { 'u': 0.0, 'g': 0.2, 'r': 0.3, 'i': 0.3, 'z': 0.2, 'y': 0.0 }
+gc_list = gc_all_lsst_field.fetch_GlobularClusters_in_LSST_footprint()
+cluster0_pix = calc_hp_pixels_for_region(gc_list[0]['l'], gc_list[0]['b'], 3.5, 3.5, 20, ahp)
+cluster1_pix = calc_hp_pixels_for_region(gc_list[1]['l'], gc_list[1]['b'], 3.5, 3.5, 20, ahp)
+gc_regions = np.concatenate((cluster0_pix.flatten(), cluster1_pix.flatten()))
+for cluster in gc_list[2:]:
+    cluster0_pix = calc_hp_pixels_for_region(cluster['l'], cluster['b'], 3.5, 3.5, 20, ahp)
+    gc_regions = np.concatenate((gc_regions, cluster0_pix.flatten()))
+
+# Zucker Star Forming Regions:
+filterset_sfr = { 'u': 0.1, 'g': 0.1, 'r': 0.1, 'i': 0.1, 'z': 0.1, 'y': 0.1 }
+SFR_list = load_SFR()
+sfr0_pix = calc_hp_pixels_for_region(SFR_list[0]['l'], SFR_list[0]['b'], 3.5, 3.5, 20, ahp)
+sfr1_pix = calc_hp_pixels_for_region(SFR_list[1]['l'], SFR_list[1]['b'], 3.5, 3.5, 20, ahp)
+sfr_regions = np.concatenate((sfr0_pix.flatten(), sfr1_pix.flatten()))
+for sfr in SFR_list[2:]:
+    sfr0_pix = calc_hp_pixels_for_region(sfr['l'], sfr['b'], 3.5, 3.5, 20, ahp)
+    sfr_regions = np.concatenate((sfr_regions, sfr1_pix.flatten()))
+
 # List of high-priority survey regions, in the form of HP pixels:
 # Bonito regions as these need an intensive DDF-life strategy
 high_priority_regions = {'Galactic_Plane': gp_region_pix,
@@ -192,12 +234,16 @@ high_priority_regions = {'Galactic_Plane': gp_region_pix,
                          'Large_Magellenic_Cloud': LMC_pix,
                          'Small_Magellenic_Cloud': SMC_pix,
                          'Galactic_Bulge': bulge_pix,
-                         'Clementini_regions': Clementini_regions}
+                         'Clementini_regions': Clementini_regions,
+                         'Globular_Clusters': gc_regions,
+                         'SFR': sfr_regions}
 #                         'Bonito_regions': Bonito_regions}
 regions_outside_plane = {'LMC': {'pixel_region': LMC_pix, 'filterset': filterset_LMC},
                          'SMC': {'pixel_region': SMC_pix, 'filterset': filterset_SMC},
                          'Clementini': {'pixel_region': Clementini_regions, 'filterset': filterset_Clementini},
-#                         'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito}
+#                         'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito},
+                         'Globular_Clusters': {'pixel_region': gc_regions, 'filterset': filterset_gc},
+                         'SFR': {'pixel_region': sfr_regions, 'filterset': filterset_sfr},
                          }
 
 # Plotting scale range:
