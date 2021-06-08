@@ -2,6 +2,8 @@
 # Globular Clusters within the LSST footprint
 # Produced by Roberto Figuera Jaimes and Rosanne Di Stefano
 
+__all__ = ['fetch_GlobularClusters_in_LSST_footprint']
+
 def fetch_GlobularClusters_in_LSST_footprint():
     gc_list = [ {'name': 'NGC6397', 'l': 338.17000, 'b': -11.9600},
                 {'name': 'NGC6752', 'l':  336.49000, 'b':  -25.6300},

@@ -1,11 +1,10 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import healpy as hp
-from os import path
-from astropy import units as u
 from astropy_healpix import HEALPix
-from astropy.coordinates import Galactic, TETE, SkyCoord
-import science_priority_regions
+from astropy.coordinates import TETE
+from .science_priority_regions import fetch_priority_region_data
 
 # Configuration
 STAR_MAP_DIR = './star_density_maps'
@@ -17,35 +16,48 @@ NSIDE = 64
 plot_min = 0.598
 plot_max = 7.545
 
-def generate_maps():
+__all__ = ['generate_gp_maps']
 
-    NPIX = hp.nside2npix(NSIDE)
+# This seems to ONLY work properly if nside=64 .. why?
+def generate_gp_maps(nside=NSIDE):
 
-    (ahp, hp_log_star_density) = create_star_density_map()
+    npix = hp.nside2npix(nside)
 
-    (high_priority_regions, regions_outside_plane) = science_priority_regions.fetch_priority_region_data(ahp)
+    # Do some juggling to see if we can just use the rubin_sim data maps
+    mapDir = os.getenv('RUBIN_SIM_DATA')
+    if mapDir is None:
+        mapDir = os.path.join(os.getenv('HOME'), 'rubin_sim_data')
+    mapDir = os.path.join(mapDir, 'maps', 'TriMaps')
+    if not os.path.isdir(mapDir):
+        mapDir = STAR_MAP_DIR
 
-    build_priority_map(high_priority_regions, regions_outside_plane,
-                            hp_log_star_density, NPIX)
+    (ahp, hp_log_star_density) = create_star_density_map(mapDir, nside)
 
-def create_star_density_map():
+    (high_priority_regions, regions_outside_plane) = fetch_priority_region_data(ahp)
+
+    vote_maps = build_priority_map(high_priority_regions, regions_outside_plane,
+                                hp_log_star_density, npix)
+    return vote_maps
+
+def create_star_density_map(mapDir = STAR_MAP_DIR, nside=NSIDE):
     """Function to create a HEALPix object based on a map of Milky Way stellar
     density generated from the Trilegal galactic model.  These data are in
     Galactic coordinates, so this needs to be rotated in order to map it
     to healpix"""
 
-    star_density_map = load_star_density_data(limiting_mag=24.7)
+    star_density_map = load_star_density_data(mapDir=mapDir, nside=nside, limiting_mag=24.7)
     hp_star_density = rotateHealpix(star_density_map)
     hp_log_star_density = np.log10(hp_star_density)
 
-    ahp = HEALPix(nside=NSIDE, order='ring', frame=TETE())
+    ahp = HEALPix(nside=nside, order='ring', frame=TETE())
 
     return ahp, hp_log_star_density
 
-def load_star_density_data(limiting_mag=28.0):
+def load_star_density_data(mapDir=STAR_MAP_DIR, nside=NSIDE, limiting_mag=28.0):
 
-    data_file = path.join(STAR_MAP_DIR, STAR_MAP_FILE)
-    if path.isfile(data_file):
+    star_map_file = f'TRIstarDensity_r_nside_{nside :d}.npz'
+    data_file = os.path.join(mapDir, star_map_file)
+    if os.path.isfile(data_file):
         npz_file = np.load(data_file)
         with np.load(data_file) as npz_file:
             star_map = npz_file['starDensity']
@@ -98,7 +110,7 @@ def rotateHealpix(hpmap, transf=['C','G'], phideg=0., thetadeg=0.):
     return rot_map
 
 def build_priority_map(high_priority_regions, regions_outside_plane,
-                        hp_log_star_density, NPIX):
+                        hp_log_star_density, npix):
     """Function to build a survey footprint HEALpix map, estimating the
     approximate scientific priority of each pixel for galactic science, based on
     a combination of regions selected by stellar density plus selected regions
@@ -130,7 +142,7 @@ def build_priority_map(high_priority_regions, regions_outside_plane,
     # Build vote maps in each filter based on the stellar density of each HEALpix
     vote_maps = {}
     for f, filter_weight in filterset_gp.items():
-        vote_maps[f] = np.zeros(NPIX)
+        vote_maps[f] = np.zeros(npix)
         for threshold, location_weight in density_thresholds.items():
             idx = np.where(hp_log_star_density >= threshold*hp_log_star_density.max())[0]
             vote_maps[f][idx] += location_weight * filter_weight
@@ -142,7 +154,7 @@ def build_priority_map(high_priority_regions, regions_outside_plane,
             vote_maps[f][region['pixel_region']] += filter_weight * 1.0
 
     # Output the priority maps in both PNG and FITS formats
-    for f in filterset_gp.keys():
+    for f in []:  #filterset_gp.keys():
         current_max = vote_maps[f].max()*1.0
         #norm = vote_maps[f].max()
         #vote_maps[f] = vote_maps[f]/norm
@@ -151,11 +163,12 @@ def build_priority_map(high_priority_regions, regions_outside_plane,
                     min=0.0, max=1.0)
         hp.graticule()
         plt.tight_layout()
-        plt.savefig(path.join(OUTPUT_DIR,'priority_GalPlane_footprint_map_'+str(f)+'.png'))
+        plt.savefig(os.path.join(OUTPUT_DIR,'priority_GalPlane_footprint_map_'+str(f)+'.png'))
         plt.close(3)
 
-        hp.write_map(path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits'), vote_maps[f], overwrite=True)
-
+        hp.write_map(os.path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits'),
+                     vote_maps[f], overwrite=True)
+    return vote_maps
 
 if __name__ == '__main__':
     generate_maps()

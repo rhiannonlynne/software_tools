@@ -9,8 +9,10 @@
 # https://www.lsst.org/submitted-whitepaper-2018
 import numpy as np
 from astropy import units as u
-from astropy.coordinates import Galactic, TETE, SkyCoord
-import gc_all_lsst_field
+from astropy.coordinates import Galactic, SkyCoord
+from .gc_all_lsst_field import fetch_GlobularClusters_in_LSST_footprint
+
+__all__ = ['fetch_priority_region_data', 'bono_survey_regions', 'load_SFR', 'calc_hp_pixels_for_region']
 
 def fetch_priority_region_data(ahp):
     """Function returns the specified HEALpix regions and filter preferences
@@ -107,7 +109,7 @@ def fetch_priority_region_data(ahp):
     # Globular clusters
     # ee module gc_all_lsst_field.py
     filterset_gc = { 'u': 0.0, 'g': 0.2, 'r': 0.3, 'i': 0.3, 'z': 0.2, 'y': 0.0 }
-    gc_list = gc_all_lsst_field.fetch_GlobularClusters_in_LSST_footprint()
+    gc_list = fetch_GlobularClusters_in_LSST_footprint()
     cluster0_pix = calc_hp_pixels_for_region(gc_list[0]['l'], gc_list[0]['b'], 3.5, 3.5, 20, ahp)
     cluster1_pix = calc_hp_pixels_for_region(gc_list[1]['l'], gc_list[1]['b'], 3.5, 3.5, 20, ahp)
     gc_regions = np.concatenate((cluster0_pix.flatten(), cluster1_pix.flatten()))
@@ -129,22 +131,33 @@ def fetch_priority_region_data(ahp):
     # Dictionaries combining the data for the region HEALpix specifications.
     # Note: Bonito regions removed from these lists after consultation with
     # authors of the White Paper, which refers to a more specialised strategy
-    high_priority_regions = {'Galactic_Plane': {'pixel_region': gp_region_pix, 'filterset': filterset_gp},
-                             'Gonzalez_Plane_region': {'pixel_region': Gonzalez_gp_pix, 'filterset': filterset_Gonzalez_gp},
-                             'Bonito_Plane_region': {'pixel_region': Bonito_gp_pix, 'filterset': filterset_Bonito_gp},
-                             'Bono_shallow_survey': {'pixel_region': Bono_shallow_pix, 'filterset': filterset_Bono_shallow},
-                             'Bono_deep_survey': {'pixel_region': Bono_deep_pix, 'filterset': filterset_Bono_deep},
-                             'Large_Magellenic_Cloud': {'pixel_region': LMC_pix, 'filterset': filterset_LMC},
-                             'Small_Magellenic_Cloud': {'pixel_region': SMC_pix, 'filterset': filterset_SMC},
-                             'Galactic_Bulge': {'pixel_region': bulge_pix, 'filterset': filterset_bulge},
-                             'Clementini_regions': {'pixel_region': Clementini_regions, 'filterset': filterset_Clementini},
-                             'Globular_Clusters': {'pixel_region': gc_regions, 'filterset': filterset_gc},
-                             'SFR': {'pixel_region': sfr_regions, 'filterset': filterset_sfr} }
-    #                         'Bonito_regions': Bonito_regions}
+    high_priority_regions = {'Galactic_Plane': {'pixel_region': gp_region_pix,
+                                                'filterset': filterset_gp},
+                             'Gonzalez_Plane_region': {'pixel_region': Gonzalez_gp_pix,
+                                                       'filterset': filterset_Gonzalez_gp},
+                             'Bonito_Plane_region': {'pixel_region': Bonito_gp_pix,
+                                                     'filterset': filterset_Bonito_gp},
+                             'Bono_shallow_survey': {'pixel_region': Bono_shallow_pix,
+                                                     'filterset': filterset_Bono_shallow},
+                             'Bono_deep_survey': {'pixel_region': Bono_deep_pix,
+                                                  'filterset': filterset_Bono_deep},
+                             'Large_Magellenic_Cloud': {'pixel_region': LMC_pix,
+                                                        'filterset': filterset_LMC},
+                             'Small_Magellenic_Cloud': {'pixel_region': SMC_pix,
+                                                        'filterset': filterset_SMC},
+                             'Galactic_Bulge': {'pixel_region': bulge_pix,
+                                                'filterset': filterset_bulge},
+                             'Clementini_regions': {'pixel_region': Clementini_regions,
+                                                    'filterset': filterset_Clementini},
+                             'Globular_Clusters': {'pixel_region': gc_regions,
+                                                   'filterset': filterset_gc},
+                             'SFR': {'pixel_region': sfr_regions,
+                                     'filterset': filterset_sfr} }
+                            # 'Bonito_regions': Bonito_regions}
     regions_outside_plane = {'LMC': {'pixel_region': LMC_pix, 'filterset': filterset_LMC},
                              'SMC': {'pixel_region': SMC_pix, 'filterset': filterset_SMC},
                              'Clementini': {'pixel_region': Clementini_regions, 'filterset': filterset_Clementini},
-    #                         'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito},
+                             # 'Bonito': {'pixel_region': Bonito_regions, 'filterset': filterset_Bonito},
                              'Globular_Clusters': {'pixel_region': gc_regions, 'filterset': filterset_gc},
                              'SFR': {'pixel_region': sfr_regions, 'filterset': filterset_sfr},
                              }
