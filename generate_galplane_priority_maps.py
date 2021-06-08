@@ -110,7 +110,7 @@ def rotateHealpix(hpmap, transf=['C','G'], phideg=0., thetadeg=0.):
     return rot_map
 
 def build_priority_map(high_priority_regions, regions_outside_plane,
-                        hp_log_star_density, npix):
+                        hp_log_star_density, npix, write_maps=False):
     """Function to build a survey footprint HEALpix map, estimating the
     approximate scientific priority of each pixel for galactic science, based on
     a combination of regions selected by stellar density plus selected regions
@@ -153,21 +153,22 @@ def build_priority_map(high_priority_regions, regions_outside_plane,
         for f, filter_weight in region['filterset'].items():
             vote_maps[f][region['pixel_region']] += filter_weight * 1.0
 
-    # Output the priority maps in both PNG and FITS formats
-    for f in []:  #filterset_gp.keys():
-        current_max = vote_maps[f].max()*1.0
-        #norm = vote_maps[f].max()
-        #vote_maps[f] = vote_maps[f]/norm
-        fig = plt.figure(3,(10,10))
-        hp.mollview(vote_maps[f], title="Priority regions of the Galactic Plane, "+str(f)+"-band",
-                    min=0.0, max=1.0)
-        hp.graticule()
-        plt.tight_layout()
-        plt.savefig(os.path.join(OUTPUT_DIR,'priority_GalPlane_footprint_map_'+str(f)+'.png'))
-        plt.close(3)
+    if write_maps:
+        # Output the priority maps in both PNG and FITS formats
+        for f in filterset_gp.keys():
+            current_max = vote_maps[f].max()*1.0
+            #norm = vote_maps[f].max()
+            #vote_maps[f] = vote_maps[f]/norm
+            fig = plt.figure(3,(10,10))
+            hp.mollview(vote_maps[f], title="Priority regions of the Galactic Plane, "+str(f)+"-band",
+                        min=0.0, max=1.0)
+            hp.graticule()
+            plt.tight_layout()
+            plt.savefig(os.path.join(OUTPUT_DIR,'priority_GalPlane_footprint_map_'+str(f)+'.png'))
+            plt.close(3)
 
-        hp.write_map(os.path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits'),
-                     vote_maps[f], overwrite=True)
+            hp.write_map(os.path.join(OUTPUT_DIR,'GalPlane_priority_map_'+str(f)+'.fits'),
+                         vote_maps[f], overwrite=True)
     return vote_maps
 
 if __name__ == '__main__':
