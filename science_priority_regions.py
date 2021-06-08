@@ -32,7 +32,7 @@ def fetch_priority_region_data(ahp):
     # https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-30571/dalla_ora_vestale_gp.pdf
     # Straeder: ugrizy 2-3d cadence or rolling
     # https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-30482/strader_plane_wfd.pdf
-    filterset_gp = { 'u': 0.1, 'g': 0.3, 'r': 0.3, 'i': 0.3, 'z': 0.2, 'y': 0.1 }
+    filterset_gp = { 'u': 0.05, 'g': 0.225, 'r': 0.225, 'i': 0.225, 'z': 0.225, 'y': 0.05 }
     gp_region_pix1 = calc_hp_pixels_for_region(43.5, 0.0, 90.0, 20.0, 500, ahp)
     gp_region_pix2 = calc_hp_pixels_for_region(317.5, 0.0, 90.0, 20.0, 500, ahp)
     gp_region_pix = np.concatenate((gp_region_pix1.flatten(),gp_region_pix2.flatten()))
